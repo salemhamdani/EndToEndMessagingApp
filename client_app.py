@@ -1,7 +1,6 @@
 import random
 import tkinter as tk
 from core.client import Client
-from core import conts as config
 from ui.error_page import ErrorPage
 from ui.loading_page import LoadingPage
 
@@ -16,7 +15,7 @@ def get_random_color():
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.client = Client(config.SERVER_PATH, config.SERVER_PORT)
+        self.client = Client()
         self.bg_color = get_random_color()
         self.title("Client app")
         self.geometry("400x500+{}+{}".format(
@@ -24,7 +23,7 @@ class App(tk.Tk):
             int((self.winfo_screenheight() - 500) / 2)
         ))
         self.configure(bg=self.bg_color)
-        self.username = tk.StringVar()
+        self.email = tk.StringVar()
         self.password = tk.StringVar()
         self.chat_log = tk.Text(self, bg='white')
         self.message_frame = tk.Frame(self)
@@ -43,7 +42,7 @@ class App(tk.Tk):
         loading_page.destroy()
         if connection:
             self.deiconify()
-            self.show_auth_page()
+            self.show_menu_page()
         else:
             self.show_error_page()
 
@@ -55,11 +54,52 @@ class App(tk.Tk):
     def show_auth_page(self):
         for widget in self.winfo_children():
             widget.destroy()
-        tk.Label(self, text="Username").pack()
-        tk.Entry(self, textvariable=self.username).pack()
-        tk.Label(self, text="Password").pack()
-        tk.Entry(self, textvariable=self.password, show="*").pack()
-        tk.Button(self, text="Login", command=self.login).pack()
+        title = tk.Label(self, text="Log in", font=("Helvetica", 18, "bold"), bg=self.bg_color)
+        title.pack(pady=20)
+        auth_frame = tk.Frame(self, bg=self.bg_color)
+        auth_frame.pack(pady=20)
+        auth_frame.rowconfigure(0, weight=1)
+        email_label = tk.Label(auth_frame, text="Email", bg=self.bg_color)
+        email_label.grid(row=0, column=0, padx=10, pady=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        email_input = tk.Entry(auth_frame, textvariable=self.email)
+        email_input.grid(row=1, column=0, padx=10, pady=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        pwd_label = tk.Label(auth_frame, text="Password", bg=self.bg_color)
+        pwd_label.grid(row=2, column=0, padx=10, pady=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        pwd_input = tk.Entry(auth_frame, textvariable=self.password, show="*")
+        pwd_input.grid(row=3, column=0, padx=10, pady=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        login_button = tk.Button(auth_frame, text="Login", command=self.login, font=("Helvetica", 14),
+                                 bg='#3c3c3c',
+                                 fg='white')
+        login_button.grid(row=4, column=0, padx=10, pady=10, sticky=tk.N + tk.S + tk.E + tk.W)
+        register_button = tk.Button(auth_frame, text="Register", command=self.show_register_page, font=("Helvetica", 14),
+                                    bg='#3c3c3c',
+                                    fg='white')
+        register_button.grid(row=5, column=0, padx=10, pady=10, sticky=tk.N + tk.S + tk.E + tk.W)
+
+    def show_register_page(self):
+        for widget in self.winfo_children():
+            widget.destroy()
+        title = tk.Label(self, text="Register", font=("Helvetica", 18, "bold"), bg=self.bg_color)
+        title.pack(pady=20)
+        register_frame = tk.Frame(self, bg=self.bg_color)
+        register_frame.pack(pady=20)
+        register_frame.rowconfigure(0, weight=1)
+        username_label = tk.Label(register_frame, text="Email", bg=self.bg_color)
+        username_label.grid(row=0, column=0, padx=10, pady=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        username_input = tk.Entry(register_frame, textvariable=self.email)
+        username_input.grid(row=1, column=0, padx=10, pady=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        pwd_label = tk.Label(register_frame, text="Password", bg=self.bg_color)
+        pwd_label.grid(row=2, column=0, padx=10, pady=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        pwd_input = tk.Entry(register_frame, textvariable=self.password, show="*")
+        pwd_input.grid(row=3, column=0, padx=10, pady=0, sticky=tk.N + tk.S + tk.E + tk.W)
+        register_button = tk.Button(register_frame, text="Register", command=self.register, font=("Helvetica", 14),
+                                    bg='#3c3c3c',
+                                    fg='white')
+        register_button.grid(row=4, column=0, padx=10, pady=10, sticky=tk.N + tk.S + tk.E + tk.W)
+        login_button = tk.Button(register_frame, text="Login", command=self.show_auth_page, font=("Helvetica", 14),
+                                 bg='#3c3c3c',
+                                 fg='white')
+        login_button.grid(row=5, column=0, padx=10, pady=10, sticky=tk.N + tk.S + tk.E + tk.W)
 
     def show_menu_page(self):
         for widget in self.winfo_children():
@@ -91,6 +131,10 @@ class App(tk.Tk):
 
     def login(self):
         # ldap login logic
+        return self.username
+
+    def register(self):
+        # register logic
         return self.username
 
 
