@@ -16,8 +16,8 @@ class UserRepository:
     def insert_user(user):
         cursor = UserRepository.init_table()
         cursor.execute(
-            "INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?)",
-            (user['cart_id'], user['name'], user['pseudo'], user['salt'], user['password'])
+            "INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?)",
+            (user['cart_id'], user['name'], user['pseudo'], user['salt'], user['password'], 0)
         )
         UserDbConnection.get_instance().commit()
 

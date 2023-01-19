@@ -17,6 +17,7 @@ class Server:
         self.generate_rsa_key()
         self.anonymous_clients = []
         self.authorized_clients = []
+        self.anonymous_clients_lock = threading.Lock()
         self.listen()
 
     def generate_rsa_key(self):
@@ -26,9 +27,12 @@ class Server:
         while True:
             client, ip = self.socket.accept()
             client.send(rsa.PublicKey.save_pkcs1(self.public_key))
-            client_object = {'socket': client, 'public_key': rsa.PublicKey.load_pkcs1(client.recv(1024))}
+            client.settimeout(1)
+            client_object = {'socket': client, 'public_key': rsa.PublicKey.load_pkcs1(client.recv(2048))}
             self.logger("Anonymous client connected: ", ip)
+            self.anonymous_clients_lock.acquire()
             self.anonymous_clients.append(client_object)
+            self.anonymous_clients_lock.release()
 
     def accept_messages(self):
         while True:
@@ -53,7 +57,10 @@ class Server:
                             Message.send_encrypted_message(client['socket'], client['public_key'], 'NOT FOUND')
 
     def handle_anonymous_clients_messages(self):
+        self.anonymous_clients_lock.acquire()
+        logged_in = None
         for anonymous_client in self.anonymous_clients:
+            print('inside anonymous client')
             msg = Message.receive_and_decrypt(anonymous_client['socket'], self.private_key)
             if msg:
                 msg = json.loads(msg)
@@ -70,18 +77,19 @@ class Server:
                     if AuthService.handle_login(msg['message']):
                         self.logger("Client logged in")
                         self.authorized_clients.append({**anonymous_client, 'pseudo': msg['message']['pseudo'].encode()})
-                        self.anonymous_clients.remove(anonymous_client)
+                        logged_in = anonymous_client
                         Message.send_encrypted_message(anonymous_client['socket'], anonymous_client['public_key'],
                                                        "OK")
                     else:
                         self.logger("Error logging the client in")
                         Message.send_encrypted_message(anonymous_client['socket'], anonymous_client['public_key'],
                                                        "Error")
+        if logged_in:
+            self.anonymous_clients.remove(logged_in)
+        self.anonymous_clients_lock.release()
 
     def listen(self):
         self.socket.listen()
         self.logger("listening on port", config.SERVER_PORT)
-        accept_connections_thread = threading.Thread(target=self.accept_connections)
-        accept_connections_thread.start()
-        accept_messages_thread = threading.Thread(target=self.accept_messages)
-        accept_messages_thread.start()
+        threading.Thread(target=self.accept_connections).start()
+        threading.Thread(target=self.accept_messages).start()

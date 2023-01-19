@@ -14,19 +14,21 @@ class Client:
         self.server_public_key = None
         self.target_client_socket = None
         self.chat_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.target_server_public_key = None
+        self.target_client_public_key = None
         self.clients_list = []
         self.generate_rsa_key()
         self.is_chat_requester = False
         self.connection_message = ""
         self.chat_logger = chat_logger
+        self.chat_connection_is_established = False
+        self.handshake_is_made = False
 
     def connect_with_server(self):
         connection = self.server_socket.connect_ex((config.SERVER_PATH, config.SERVER_PORT))
         connection_established = connection == 0
 
         if connection_established:
-            self.server_public_key = rsa.PublicKey.load_pkcs1(self.server_socket.recv(1024))
+            self.server_public_key = rsa.PublicKey.load_pkcs1(self.server_socket.recv(2048))
             self.server_socket.send(rsa.PublicKey.save_pkcs1(self.public_key))
         return connection_established
 
@@ -42,7 +44,7 @@ class Client:
             self.clients_list = json.loads(server_message)
 
     def choose_client(self, pseudo_index):
-        if pseudo_index >= len(self.clients_list):
+        if not pseudo_index.isnumeric() and pseudo_index >= len(self.clients_list):
             return None
         message = Message(config.CHOOSE_CLIENT_TYPE, self.clients_list[pseudo_index])
         Message.send_encrypted_message(self.server_socket, self.server_public_key, message)
@@ -50,24 +52,35 @@ class Client:
         if self.connection_message != 'ERROR':
             self.chat_socket.bind((config.CLIENT_PATH, config.CHAT_PORT))
             self.chat_socket.listen()
-            accept_connections_thread = threading.Thread(target=self.listen_to_message)
+            accept_connections_thread = threading.Thread(target=self.listen_to_message_as_requester)
             accept_connections_thread.start()
 
-    def listen_to_message(self):
-        return None
+    def wait_getting_chat_request(self):
+        while True:
+            if not self.chat_connection_is_established:
+                self.chat_connection_is_established = self.chat_socket.connect_ex(
+                    (config.CLIENT_PATH, config.CHAT_PORT)) == 0
+            else:
+                if not self.handshake_is_made:
+                    self.target_client_public_key = rsa.PublicKey.load_pkcs1(self.chat_socket.recv(2048))
+                    self.chat_socket.send(rsa.PublicKey.save_pkcs1(self.public_key))
+                    self.handshake_is_made = True
 
-    def connect_to_client(self):
-        message = "GET_CLIENTS"
-        message = message.encode('utf8')
-        self.server_socket.send(rsa.encrypt(message, self.server_public_key))
-        clients = self.server_socket.recv(1024).decode('ascii')
-        print("Available clients: " + clients)
-        target_client = input("Enter the nickname of the client you want to connect to: ")
-        message = f"CONNECT_TO {target_client}"
-        message = message.encode('utf8')
-        self.server_socket.send(rsa.encrypt(message, self.server_public_key))
-        target_address = self.server_socket.recv(1024).decode('ascii')
-        target_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        target_client_socket.connect((target_address.split(':')[0], int(target_address.split(':')[1])))
-        target_client_socket.send(f"Connected to {self.nickname}".encode('ascii'))
-        print("Connected to " + target_client)
+    def listen_to_message_as_requester(self):
+        while True:
+            if self.is_chat_requester:
+                (target, ip) = self.chat_socket.accept()
+                if not self.target_client_socket:
+                    self.target_client_socket = target
+                    self.target_client_public_key = rsa.PublicKey.load_pkcs1(self.target_client_socket.recv(2048))
+                    self.target_client_socket.send(rsa.PublicKey.save_pkcs1(self.public_key))
+                message = Message.receive_and_decrypt(self.target_client_socket, self.private_key)
+                if message:
+                    self.chat_logger(message)
+
+    def listen_to_message_as_receiver(self):
+        while True:
+            if not self.is_chat_requester and self.chat_connection_is_established:
+                message = Message.receive_and_decrypt(self.target_client_socket, self.private_key)
+                if message:
+                    self.chat_logger(message)
