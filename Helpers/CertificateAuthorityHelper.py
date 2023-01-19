@@ -1,11 +1,12 @@
 from OpenSSL import crypto
 from socket import gethostname
-
+import uuid
+import RSAHelper
 CERT_FILE = "self-signed.crt"
 KEY_FILE = "private.key"
 
 
-class CertificateAuthority:
+class CertificateAuthorityHelper:
 
     @staticmethod
     def cert_gen(
@@ -17,15 +18,13 @@ class CertificateAuthority:
             state_or_province_name="stateOrProvinceName",
             organization_name="organizationName",
             organization_unit_name="organizationUnitName",
-            serial_number=0,
+            serial_number=int(uuid.uuid4()),
             validity_end_in_seconds=10 * 365 * 24 * 60 * 60,
-            certificate_location="self-signed.crt",
     ):
         # can look at generated file using openssl:
         # openssl x509 -inform pem -in self-signed.crt -noout -text
         # create a key pair
-        k = crypto.PKey()
-        k.generate_key(crypto.TYPE_RSA, 4096)
+        k = RSAHelper.load_private_key('global path')
         # create a self-signed cert
         cert = crypto.X509()
         cert.get_subject().C = country_name
@@ -41,8 +40,7 @@ class CertificateAuthority:
         cert.set_issuer(cert.get_subject())
         cert.set_pubkey(k)
         cert.sign(k, 'sha512')
-        with open(certificate_location, "wt") as f:
-            f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert).decode("utf-8"))
+        return cert
 
     @staticmethod
     def create_self_signed_cert():
@@ -71,3 +69,22 @@ class CertificateAuthority:
         with open(KEY_FILE, "w") as f:
             f.write(
                 crypto.dump_privatekey(crypto.FILETYPE_PEM, k).decode("utf-8"))
+
+    @staticmethod
+    def save_certificate(certificate_location,  certificate):
+        try:
+            with open(certificate_location, "wt") as f:
+                f.write(crypto.dump_certificate(
+                    crypto.FILETYPE_PEM, certificate).decode("utf-8"))
+        except:
+            return False
+
+    @staticmethod
+    def read_certificate(path):
+        try:
+            with open(path, 'rb') as f:
+                certificat = crypto.load_certificate(
+                    crypto.FILETYPE_PEM, f.read())
+            return certificat
+        except:
+            return False
