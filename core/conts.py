@@ -1,2 +1,0 @@
-SERVER_PATH = 'localhost'
-SERVER_PORT = 8000

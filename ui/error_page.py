@@ -20,3 +20,7 @@ class ErrorPage(tk.Toplevel):
     def close(self):
         self.destroy()
         self.context.destroy()
+
+    def show(self):
+        self.context.withdraw()
+        self.mainloop()

@@ -1,14 +1,16 @@
 import socket
 import rsa
-from core.conts import SERVER_PATH, SERVER_PORT
+from core.consts import SERVER_PATH, SERVER_PORT
 from core.message import Message
 
 
 class Client:
     def __init__(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8192)
         self.server_public_key = None
         self.target_client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.target_client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8192)
         self.target_server_public_key = None
         self.generate_rsa_key()
 
@@ -22,7 +24,7 @@ class Client:
         return connection_established
 
     def generate_rsa_key(self):
-        (self.public_key, self.private_key) = rsa.newkeys(512)
+        (self.public_key, self.private_key) = rsa.newkeys(2048)
 
     def connect_to_client(self):
         message = "GET_CLIENTS"
@@ -39,11 +41,3 @@ class Client:
         target_client_socket.connect((target_address.split(':')[0], int(target_address.split(':')[1])))
         target_client_socket.send(f"Connected to {self.nickname}".encode('ascii'))
         print("Connected to " + target_client)
-
-
-client = Client()
-client.connect_with_server()
-print(client.server_public_key)
-Message.send_encrypted_message(socket=client.server_socket, public_key=client.server_public_key, message="test@test.com")
-print("Sent encrypted message")
-Message.send_encrypted_message(socket=client.server_socket, public_key=client.server_public_key, message="hello world")
