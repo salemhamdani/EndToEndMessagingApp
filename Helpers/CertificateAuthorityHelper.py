@@ -1,7 +1,7 @@
 from OpenSSL import crypto
 from socket import gethostname
 import uuid
-import RSAHelper
+from Helpers.RSAHelper import RSAHelper
 import core.consts as config
 
 CERT_FILE = "self-signed.crt"
@@ -29,7 +29,7 @@ class CertificateAuthorityHelper:
         cert.get_subject().emailAddress = certificate_request.get_subject().emailAddress
         cert.set_serial_number(int(uuid.uuid4()))
         cert.gmtime_adj_notBefore(0)
-        cert.gmtime_adj_notAfter(validity_end_in_seconds)
+        cert.gmtime_adj_notAfter(10 * 365 * 24 * 60 * 60)
         cert.set_issuer(cert.get_subject())
         cert.set_pubkey(certificate_request.public_key())
         cert.sign(k, 'SHA-256')
@@ -82,37 +82,23 @@ class CertificateAuthorityHelper:
     def read_certificate(path):
         try:
             with open(path, 'rb') as f:
-                certificat = crypto.load_certificate(
+                certificate = crypto.load_certificate(
                     crypto.FILETYPE_PEM, f.read())
-            return certificat
+            return certificate
         except:
             return False
 
     @staticmethod
     def create_certificate_request(private_key):
-
-        c = raw_input('Enter your country: ')
-        st = raw_input("Enter your state: ")
-        l = raw_input("Enter your location: ")
-        o = raw_input("Enter your organization: ")
-        ou = raw_input("Enter your organizational unit: ")
-
         req = crypto.X509Req()
-        req.get_subject().CN = nodename
-        req.get_subject().countryName = c
-        req.get_subject().stateOrProvinceName = st
-        req.get_subject().localityName = l
-        req.get_subject().organizationName = o
-        req.get_subject().organizationalUnitName = ou
+        req.get_subject().CN = "nodename"
+        req.get_subject().countryName = "TN"
+        req.get_subject().stateOrProvinceName = "TUNIS"
+        req.get_subject().localityName = "l"
+        req.get_subject().organizationName = "org"
+        req.get_subject().organizationalUnitName = "org"
 
-        base_constraints = ([
-            crypto.X509Extension("keyUsage", False, self.usage),
-            crypto.X509Extension("basicConstraints", False, "CA:{c}".format(c=self._isCA())),
-        ])
-        x509_extensions = base_constraints
-        req.add_extensions(x509_extensions)
-
-        req.set_pubkey(k.publickey().exportKey('PEM'))
+        req.set_pubkey(private_key.publickey().exportKey('PEM'))
         req.sign(private_key, 'SHA-256')
 
         return req

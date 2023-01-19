@@ -49,6 +49,6 @@ class RSAHelper:
     @staticmethod
     def verify_sha256(msg: str, signature, key):
         try:
-                return rsa.verify(msg.encode('ascii'), signature, key) == 'SHA-256'
+            return rsa.verify(msg.encode('ascii'), signature, key) == 'SHA-256'
         except:
             return False
