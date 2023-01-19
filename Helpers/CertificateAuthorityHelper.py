@@ -2,6 +2,8 @@ from OpenSSL import crypto
 from socket import gethostname
 import uuid
 import RSAHelper
+import core.consts as config
+
 CERT_FILE = "self-signed.crt"
 KEY_FILE = "private.key"
 
@@ -9,22 +11,44 @@ KEY_FILE = "private.key"
 class CertificateAuthorityHelper:
 
     @staticmethod
-    def cert_gen(
-            key,
-            email_address="emailAddress",
-            common_name="commonName",
-            country_name="TUN",
-            locality_name="localityName",
-            state_or_province_name="stateOrProvinceName",
-            organization_name="organizationName",
-            organization_unit_name="organizationUnitName",
-            serial_number=int(uuid.uuid4()),
-            validity_end_in_seconds=10 * 365 * 24 * 60 * 60,
+    def create_certificate_from_req(
+            username, certificate_request
     ):
         # can look at generated file using openssl:
-        # openssl x509 -inform pem -in self-signed.crt -noout -text
+        # openssl x509 -inform pem -in self-signed.crt-noout -text
         # create a key pair
-        k = RSAHelper.load_private_key('global path')
+        # create a self-signed cert
+        k = RSAHelper.load_private_key(config.SERVER_KEY_PATH)
+        cert = crypto.X509()
+        cert.get_subject().C = certificate_request.get_subject().C
+        cert.get_subject().ST = certificate_request.get_subject().ST
+        cert.get_subject().L = certificate_request.get_subject().L
+        cert.get_subject().O = certificate_request.get_subject().O
+        cert.get_subject().OU = certificate_request.get_subject().OU
+        cert.get_subject().CN = certificate_request.get_subject().CN
+        cert.get_subject().emailAddress = certificate_request.get_subject().emailAddress
+        cert.set_serial_number(int(uuid.uuid4()))
+        cert.gmtime_adj_notBefore(0)
+        cert.gmtime_adj_notAfter(validity_end_in_seconds)
+        cert.set_issuer(cert.get_subject())
+        cert.set_pubkey(certificate_request.public_key())
+        cert.sign(k, 'SHA-256')
+        CertificateAuthorityHelper.save_certificate(config.CLIENTS_CERTIFICATES_DIRECTORY + f'{username}.crt', cert)
+        return cert
+
+    @staticmethod
+    def create_self_signed_cert(private_key, email_address="emailAddress",
+                                common_name="commonName",
+                                country_name="TUN",
+                                locality_name="localityName",
+                                state_or_province_name="stateOrProvinceName",
+                                organization_name="organizationName",
+                                organization_unit_name="organizationUnitName",
+                                serial_number=int(uuid.uuid4()),
+                                validity_end_in_seconds=10 * 365 * 24 * 60 * 60, ):
+        # create a key pair
+        k = RSAHelper.load_private_key(config.SERVER_KEY_PATH)
+
         # create a self-signed cert
         cert = crypto.X509()
         cert.get_subject().C = country_name
@@ -38,40 +62,15 @@ class CertificateAuthorityHelper:
         cert.gmtime_adj_notBefore(0)
         cert.gmtime_adj_notAfter(validity_end_in_seconds)
         cert.set_issuer(cert.get_subject())
-        cert.set_pubkey(k)
-        cert.sign(k, 'sha512')
-        return cert
-
-    @staticmethod
-    def create_self_signed_cert():
-        # create a key pair
-        k = crypto.PKey()
-        k.generate_key(crypto.TYPE_RSA, 4096)
-
-        # create a self-signed cert
-        cert = crypto.X509()
-        cert.get_subject().C = "TUN"
-        cert.get_subject().ST = "Tunis"
-        cert.get_subject().L = "Tunis"
-        cert.get_subject().O = "INSAT"
-        cert.get_subject().OU = "INSAT"
-        cert.get_subject().CN = gethostname()
-        cert.set_serial_number(1000)
-        cert.gmtime_adj_notBefore(0)
-        cert.gmtime_adj_notAfter(10 * 365 * 24 * 60 * 60)
-        cert.set_issuer(cert.get_subject())
-        cert.set_pubkey(k)
-        cert.sign(k, 'sha256')
+        cert.set_pubkey(k.publickey().exportKey('PEM'))
+        cert.sign(k, 'SHA-256')
 
         with open(CERT_FILE, "w") as f:
             f.write(
                 crypto.dump_certificate(crypto.FILETYPE_PEM, cert).decode("utf-8"))
-        with open(KEY_FILE, "w") as f:
-            f.write(
-                crypto.dump_privatekey(crypto.FILETYPE_PEM, k).decode("utf-8"))
 
     @staticmethod
-    def save_certificate(certificate_location,  certificate):
+    def save_certificate(certificate_location, certificate):
         try:
             with open(certificate_location, "wt") as f:
                 f.write(crypto.dump_certificate(
@@ -88,3 +87,32 @@ class CertificateAuthorityHelper:
             return certificat
         except:
             return False
+
+    @staticmethod
+    def create_certificate_request(private_key):
+
+        c = raw_input('Enter your country: ')
+        st = raw_input("Enter your state: ")
+        l = raw_input("Enter your location: ")
+        o = raw_input("Enter your organization: ")
+        ou = raw_input("Enter your organizational unit: ")
+
+        req = crypto.X509Req()
+        req.get_subject().CN = nodename
+        req.get_subject().countryName = c
+        req.get_subject().stateOrProvinceName = st
+        req.get_subject().localityName = l
+        req.get_subject().organizationName = o
+        req.get_subject().organizationalUnitName = ou
+
+        base_constraints = ([
+            crypto.X509Extension("keyUsage", False, self.usage),
+            crypto.X509Extension("basicConstraints", False, "CA:{c}".format(c=self._isCA())),
+        ])
+        x509_extensions = base_constraints
+        req.add_extensions(x509_extensions)
+
+        req.set_pubkey(k.publickey().exportKey('PEM'))
+        req.sign(private_key, 'SHA-256')
+
+        return req

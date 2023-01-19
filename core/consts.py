@@ -28,3 +28,8 @@ def get_random_color():
     g = random.randint(0, 255)
     b = random.randint(0, 255)
     return '#{:02x}{:02x}{:02x}'.format(r, g, b)
+
+
+SERVER_KEY_PATH = get_app_path() + 'server/pair_key.key'
+SERVER_CERTIFICATE_PATH = get_app_path() + 'server/certificate.crt'
+CLIENTS_CERTIFICATES_DIRECTORY = 'clients/certificates/'
