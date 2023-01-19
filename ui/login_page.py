@@ -37,6 +37,9 @@ class LoginPage:
                                     bg='#3c3c3c',
                                     fg='white')
         register_button.grid(row=5, column=0, padx=10, pady=10, sticky=tk.N + tk.S + tk.E + tk.W)
+        exit_button = tk.Button(auth_frame, text="Exit", font=("Helvetica", 14), width=10, height=2, bg='#3c3c3c',
+                                fg='white', command=self.context.menu_page.exit)
+        exit_button.grid(row=6, column=0, padx=10, pady=20, sticky=tk.N + tk.S + tk.E + tk.W)
 
     def login(self):
         login_object = {
@@ -54,6 +57,7 @@ class LoginPage:
             self.context.client.private_key
         )
         if server_message and server_message == 'OK':
+            self.context.client.pseudo = self.pseudo.get()
             self.context.show_menu_page()
         else:
-            self.alert_message.configure(text="Error", fg="red")
+            self.alert_message.configure(text="Invalid credentials", fg="red")

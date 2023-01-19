@@ -17,7 +17,10 @@ class Server:
         self.generate_rsa_key()
         self.anonymous_clients = []
         self.authorized_clients = []
+        self.clients_in_chat = []
         self.anonymous_clients_lock = threading.Lock()
+        self.authorized_clients_lock = threading.Lock()
+        self.clients_in_chat_lock = threading.Lock()
         self.listen()
 
     def generate_rsa_key(self):
@@ -40,33 +43,57 @@ class Server:
             self.handle_authorized_clients_messages()
 
     def handle_authorized_clients_messages(self):
+        authorized_client_exited = None
         for client in self.authorized_clients:
             msg = Message.receive_and_decrypt(client['socket'], self.private_key)
+            if msg == b'':
+                self.logger(f"client {client['pseudo']} exited the app")
+                authorized_client_exited = client
             if msg:
+                msg = json.loads(msg)
                 if msg['message_type'] == config.REQUEST_ALL_TYPE:
+                    self.logger(f"{client['pseudo']} requested to see all connected users")
                     clients = UserRepository.get_connected_users()
+                    self.logger(f"connected users are {clients}")
                     Message.send_encrypted_message(client['socket'], client['public_key'], json.dumps(clients))
                 if msg['message_type'] == config.CHOOSE_CLIENT_TYPE:
+                    found = False
                     for target_client in self.authorized_clients:
-                        if target_client['pseudo'] == msg['message']['pseudo']:
+                        target_client_pseudo = target_client['pseudo'].decode('utf')
+                        if target_client_pseudo == msg['message']:
+                            found = True
                             Message.send_encrypted_message(target_client['socket'], target_client['public_key'],
-                                                           f"Connection established with {client['pseudo']}")
+                                                           f"Peer to peer connection established with {client['pseudo'].decode('utf')}\n")
                             Message.send_encrypted_message(client['socket'], client['public_key'],
-                                                           f"Connection established with {target_client['pseudo']}")
+                                                           f"Peer to peer connection established with {target_client_pseudo}\n")
+                            self.logger(f"Peer to peer connection is established between {client['pseudo'].decode('utf')} and {target_client_pseudo}")
                         else:
-                            Message.send_encrypted_message(client['socket'], client['public_key'], 'NOT FOUND')
+                            pass
+                    if not found:
+                        Message.send_encrypted_message(client['socket'], client['public_key'], 'NOT FOUND')
+                if msg['message_type'] == config.CONNECT_CHAT_TYPE:
+                    self.logger(f"{client['pseudo']} connected to his chat page")
+                    AuthService.connect_chat(client)
+                if msg['message_type'] == config.DISCONNECT_CHAT_TYPE:
+                    self.logger(f"{client['pseudo']} disconnected from his chat page")
+                    AuthService.disconnect_chat(client)
+        if authorized_client_exited:
+            self.authorized_clients.remove(authorized_client_exited)
 
     def handle_anonymous_clients_messages(self):
         self.anonymous_clients_lock.acquire()
         logged_in = None
+        anonymous_client_exited = None
         for anonymous_client in self.anonymous_clients:
-            print('inside anonymous client')
             msg = Message.receive_and_decrypt(anonymous_client['socket'], self.private_key)
+            if msg == b'':
+                self.logger("anonymous client exited the app")
+                anonymous_client_exited = anonymous_client
             if msg:
                 msg = json.loads(msg)
                 if msg['message_type'] == config.REGISTER_TYPE:
                     if AuthService.handle_register(msg['message']):
-                        self.logger("Client registered")
+                        self.logger(f"Client {msg['message']['pseudo']} registered")
                         Message.send_encrypted_message(anonymous_client['socket'], anonymous_client['public_key'],
                                                        "OK")
                     else:
@@ -75,8 +102,9 @@ class Server:
                                                        "Error")
                 elif msg['message_type'] == config.LOGIN_TYPE:
                     if AuthService.handle_login(msg['message']):
-                        self.logger("Client logged in")
-                        self.authorized_clients.append({**anonymous_client, 'pseudo': msg['message']['pseudo'].encode()})
+                        self.logger(f"Client {msg['message']['pseudo'].encode()} logged in")
+                        self.authorized_clients.append(
+                            {**anonymous_client, 'pseudo': msg['message']['pseudo'].encode('utf-8')})
                         logged_in = anonymous_client
                         Message.send_encrypted_message(anonymous_client['socket'], anonymous_client['public_key'],
                                                        "OK")
@@ -86,6 +114,8 @@ class Server:
                                                        "Error")
         if logged_in:
             self.anonymous_clients.remove(logged_in)
+        if anonymous_client_exited:
+            self.anonymous_clients.remove(anonymous_client_exited)
         self.anonymous_clients_lock.release()
 
     def listen(self):

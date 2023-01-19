@@ -31,3 +31,11 @@ class AuthService:
     @staticmethod
     def hash_password(password, salt):
         return hashlib.sha256(password + salt).hexdigest()
+
+    @staticmethod
+    def connect_chat(client):
+        UserRepository.connect(client['pseudo'])
+
+    @staticmethod
+    def disconnect_chat(client):
+        UserRepository.disconnect(client['pseudo'])

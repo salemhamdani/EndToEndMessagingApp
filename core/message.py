@@ -19,6 +19,8 @@ class Message:
     def receive_and_decrypt(socket, private_key):
         try:
             cipher_text = socket.recv(2048)
+            if cipher_text == b'':
+                return b''
             if cipher_text:
                 try:
                     decrypted_text = rsa.decrypt(cipher_text, private_key).decode()

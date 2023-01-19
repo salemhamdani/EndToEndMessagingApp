@@ -50,6 +50,9 @@ class RegisterPage:
                                  bg='#3c3c3c',
                                  fg='white')
         login_button.grid(row=9, column=0, padx=10, pady=10, sticky=tk.N + tk.S + tk.E + tk.W)
+        exit_button = tk.Button(register_frame, text="Exit", font=("Helvetica", 14), width=10, height=2, bg='#3c3c3c',
+                                fg='white', command=self.context.menu_page.exit)
+        exit_button.grid(row=10, column=0, padx=10, pady=20, sticky=tk.N + tk.S + tk.E + tk.W)
 
     def register(self):
         register_object = {

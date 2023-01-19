@@ -15,7 +15,7 @@ class App(tk.Tk):
         self.client = Client(self.log_chat_message)
         self.bg_color = get_random_color()
         self.title("Client app")
-        self.geometry("400x500+{}+{}".format(
+        self.geometry("500x650+{}+{}".format(
             int((self.winfo_screenwidth() - 400) / 2),
             int((self.winfo_screenheight() - 500) / 2)
         ))
