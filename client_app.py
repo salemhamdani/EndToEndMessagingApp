@@ -1,6 +1,6 @@
-import random
 import tkinter as tk
 from core.client import Client
+from core.consts import get_random_color
 from ui.chat_page import ChatPage
 from ui.error_page import ErrorPage
 from ui.loading_page import LoadingPage
@@ -9,17 +9,10 @@ from ui.menu_page import MenuPage
 from ui.register_page import RegisterPage
 
 
-def get_random_color():
-    r = random.randint(0, 255)
-    g = random.randint(0, 255)
-    b = random.randint(0, 255)
-    return '#{:02x}{:02x}{:02x}'.format(r, g, b)
-
-
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.client = Client()
+        self.client = Client(self.log_chat_message)
         self.bg_color = get_random_color()
         self.title("Client app")
         self.geometry("400x500+{}+{}".format(
@@ -53,6 +46,10 @@ class App(tk.Tk):
 
     def show_chat_page(self):
         self.chat_page.show()
+
+    def log_chat_message(self, *message):
+        text = ' '.join(map(str, message))
+        self.chat_page.chat_log.insert(tk.INSERT, text)
 
 
 App().mainloop()

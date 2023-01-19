@@ -5,6 +5,7 @@ import threading
 import core.consts as config
 from core.message import Message
 from services.auth import AuthService
+from services.user_repository import UserRepository
 
 
 class Server:
@@ -38,7 +39,18 @@ class Server:
         for client in self.authorized_clients:
             msg = Message.receive_and_decrypt(client['socket'], self.private_key)
             if msg:
-                self.logger(msg)
+                if msg['message_type'] == config.REQUEST_ALL_TYPE:
+                    clients = UserRepository.get_connected_users()
+                    Message.send_encrypted_message(client['socket'], client['public_key'], json.dumps(clients))
+                if msg['message_type'] == config.CHOOSE_CLIENT_TYPE:
+                    for target_client in self.authorized_clients:
+                        if target_client['pseudo'] == msg['message']['pseudo']:
+                            Message.send_encrypted_message(target_client['socket'], target_client['public_key'],
+                                                           f"Connection established with {client['pseudo']}")
+                            Message.send_encrypted_message(client['socket'], client['public_key'],
+                                                           f"Connection established with {target_client['pseudo']}")
+                        else:
+                            Message.send_encrypted_message(client['socket'], client['public_key'], 'NOT FOUND')
 
     def handle_anonymous_clients_messages(self):
         for anonymous_client in self.anonymous_clients:
@@ -57,7 +69,7 @@ class Server:
                 elif msg['message_type'] == config.LOGIN_TYPE:
                     if AuthService.handle_login(msg['message']):
                         self.logger("Client logged in")
-                        self.authorized_clients.append(anonymous_client)
+                        self.authorized_clients.append({**anonymous_client, 'pseudo': msg['message']['pseudo'].encode()})
                         self.anonymous_clients.remove(anonymous_client)
                         Message.send_encrypted_message(anonymous_client['socket'], anonymous_client['public_key'],
                                                        "OK")

@@ -1,5 +1,7 @@
 import sqlite3
 
+from core.consts import get_app_path
+
 
 class UserDbConnection(object):
     instance = None
@@ -8,7 +10,7 @@ class UserDbConnection(object):
     def get_instance():
         try:
             if UserDbConnection.instance is None:
-                UserDbConnection.instance = sqlite3.connect("./db/users_bd.db")
+                UserDbConnection.instance = sqlite3.connect(get_app_path() + "/db/users_bd.db")
             return UserDbConnection.instance
 
         except AttributeError:
