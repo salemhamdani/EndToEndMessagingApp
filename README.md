@@ -18,11 +18,11 @@ This project was made by :
 * using rsa encryption all communications between any parties are secure (client-server or client-client)
 * a user can enter the chat page and can list the connected users
 * a user can choose a person to chat with
-* a handshake is made between them with exchanging keys and verification of the certificate
+* a handshake is made between them with exchanging keys and verifying of the certificate
 * a channel is created between them so the chat will be purely peer to peer without the server's intervention
 
 ## Dependencies
-* To run the project you should install the libraries used for the ui and for encryption adn generating certificates:
+* To run the project you should install the libraries used for the ui and for encryption and generating certificates:
   -  rsa
   - threading
   - socket
